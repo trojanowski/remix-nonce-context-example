@@ -1,9 +1,12 @@
+import crypto from "node:crypto";
 import { PassThrough } from "stream";
 import type { EntryContext } from "@remix-run/node";
 import { Response } from "@remix-run/node";
 import { RemixServer } from "@remix-run/react";
 import isbot from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
+
+import { NonceContext } from "./components/nonce-context";
 
 const ABORT_DELAY = 5000;
 
@@ -34,12 +37,18 @@ function handleBotRequest(
   responseHeaders: Headers,
   remixContext: EntryContext
 ) {
+  const cspNonce = crypto.randomBytes(16).toString("hex");
+  responseHeaders.set("Content-Security-Policy", generateCsp(cspNonce));
+
   return new Promise((resolve, reject) => {
     let didError = false;
 
     const { pipe, abort } = renderToPipeableStream(
-      <RemixServer context={remixContext} url={request.url} />,
+      <NonceContext.Provider value={cspNonce}>
+        <RemixServer context={remixContext} url={request.url} />
+      </NonceContext.Provider>,
       {
+        nonce: cspNonce,
         onAllReady() {
           const body = new PassThrough();
 
@@ -75,12 +84,18 @@ function handleBrowserRequest(
   responseHeaders: Headers,
   remixContext: EntryContext
 ) {
+  const cspNonce = crypto.randomBytes(16).toString("hex");
+  responseHeaders.set("Content-Security-Policy", generateCsp(cspNonce));
+
   return new Promise((resolve, reject) => {
     let didError = false;
 
     const { pipe, abort } = renderToPipeableStream(
-      <RemixServer context={remixContext} url={request.url} />,
+      <NonceContext.Provider value={cspNonce}>
+        <RemixServer context={remixContext} url={request.url} />
+      </NonceContext.Provider>,
       {
+        nonce: cspNonce,
         onShellReady() {
           const body = new PassThrough();
 
@@ -108,4 +123,8 @@ function handleBrowserRequest(
 
     setTimeout(abort, ABORT_DELAY);
   });
+}
+
+function generateCsp(nonce: string) {
+  return `script-src 'nonce-${nonce}' 'strict-dynamic'; object-src 'none'; base-uri 'none';`;
 }

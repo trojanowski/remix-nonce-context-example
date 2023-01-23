@@ -7,6 +7,8 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import { useContext } from "react";
+import { NonceContext } from "./components/nonce-context";
 
 export const meta: MetaFunction = () => ({
   charset: "utf-8",
@@ -15,6 +17,8 @@ export const meta: MetaFunction = () => ({
 });
 
 export default function App() {
+  const nonce = useContext(NonceContext);
+
   return (
     <html lang="en">
       <head>
@@ -23,9 +27,15 @@ export default function App() {
       </head>
       <body>
         <Outlet />
-        <ScrollRestoration />
-        <Scripts />
-        <LiveReload />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
+        <LiveReload nonce={nonce} />
+        {/* Uncomment the `<script>` below to ensure the CSP policy prevented
+            an inline script without nonce
+        */}
+        {/* <script
+          dangerouslySetInnerHTML={{ __html: "alert('Should be prevented')" }}
+        /> */}
       </body>
     </html>
   );
